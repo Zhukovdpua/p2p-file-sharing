@@ -7,6 +7,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4785bdd1c96b2a846b2bd7cc02e86b6b3dbf14e7e53446c4f54c92a361040822"
 
 [[package]]
+name = "hermit-abi"
+version = "0.1.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1010591b26bbfe835e9faeabeb11866061cc7dcebffd56ad7d0942d0e61aefd8"
+dependencies = [
+ "libc",
+]
+
+[[package]]
 name = "ipconfig"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -37,6 +46,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8197ad28c61566fb74b2167563865906215fbc32c61fd866bd54e7c195eb84ed"
 
 [[package]]
+name = "num_cpus"
+version = "1.12.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "46203554f085ff89c235cd12f7075f3233af9b11ed7c9e16dfe2560d03313ce6"
+dependencies = [
+ "hermit-abi",
+ "libc",
+]
+
+[[package]]
 name = "p2p-file-sharing"
 version = "0.1.0"
 dependencies = [
@@ -44,6 +63,7 @@ dependencies = [
  "machine-ip",
  "serde",
  "serde_json",
+ "threadpool",
 ]
 
 [[package]]
@@ -128,6 +148,15 @@ dependencies = [
  "proc-macro2",
  "quote",
  "unicode-xid",
+]
+
+[[package]]
+name = "threadpool"
+version = "1.7.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e2f0c90a5f3459330ac8bc0d2f879c693bb7a2f59689c1083fc4ef83834da865"
+dependencies = [
+ "num_cpus",
 ]
 
 [[package]]
