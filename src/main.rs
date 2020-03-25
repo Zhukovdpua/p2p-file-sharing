@@ -82,6 +82,56 @@ fn push_to_HashMap<K, V>(files_list: &Arc<Mutex<HashMap<K, Vec<V>>>>, key: K, va
     }
 }
 
+
+
+fn accept_TCP_to_download (
+    pool: Arc<Mutex<ThreadPool>>,
+    file_name: String,
+    sharing_files_list: share_files,
+    listener: &TcpListener
+)
+{
+    let mut stream = listener.accept().unwrap();
+    pool.lock().unwrap().execute(move|| {
+        let mut file = File::open(file_name.clone()).unwrap();
+        let mut buffer=Vec::new();
+        let n = file.read_to_end(&mut buffer).unwrap();
+        let mut tmp_v=Vec::new();
+        tmp_v.push(stream.1.ip());
+        push_to_HashMap(&sharing_files_list, file_name.clone(), tmp_v);
+        stream.0.write(&buffer[..n]).unwrap();
+
+        let index = sharing_files_list.lock().unwrap().get(&file_name).unwrap().iter().position(|x| *x == stream.1.ip()).unwrap(); // change to retain if what
+        sharing_files_list.lock().unwrap().get_mut(&file_name).unwrap().remove(index);
+    });
+}
+
+fn start_download(
+    pool: Arc<Mutex<ThreadPool>>,
+    remote_addr: SocketAddr,
+    file_name: String,
+    save_path_list: Arc<Mutex<HashMap<String, String>>>,
+    downloading_files_list: load_files
+)
+{
+    pool.lock().unwrap().execute(move|| {
+        let mut stream = TcpStream::connect(remote_addr).unwrap();
+        let mut buffer=Vec::new();
+        let mut tmp_v=Vec::new();
+        tmp_v.push(remote_addr.ip());
+        push_to_HashMap(&downloading_files_list, file_name.clone(), tmp_v);
+        let n = stream.read_to_end(& mut buffer).unwrap();
+        let index = downloading_files_list.lock().unwrap().get(&file_name).unwrap().iter().position(
+            |x| *x == remote_addr.ip()
+        ).unwrap(); // change to retain if what
+        downloading_files_list.lock().unwrap().get_mut(&file_name).unwrap().remove(index);
+
+        let save_path= save_path_list.lock().unwrap().remove(&file_name).unwrap();
+        let mut file = File::create( save_path + file_name.as_str()).unwrap();
+        file.write(&buffer[..n]);
+    });
+}
+
 fn run_client_listener(
     my_files_toShare_list: Arc<Mutex<Vec<String>>>,
     foreign_files_toDownload_list:Arc<Mutex<HashMap<IpAddr, Vec<String>>>>,
@@ -91,7 +141,7 @@ fn run_client_listener(
 )
 {
     thread::spawn(move|| {
-        let listener = TcpListener::bind("localhost:1234").unwrap();
+        let listener = TcpListener::bind("localhost:8080").unwrap();
         let mut streamWrapped=listener.incoming();
         let mut stream = streamWrapped.next().unwrap().unwrap();
         loop{
@@ -129,58 +179,6 @@ fn run_client_listener(
     });
 }
 
-fn create_TCP_chanel_to_download (
-    pool: Arc<Mutex<ThreadPool>>,
-    file_name: String,
-    sharing_files_list: share_files,
-    val: IpAddr
-) -> JoinHandle<()>
-{
-    thread::spawn(move|| {
-        let listener = TcpListener::bind("localhost:1234").unwrap();
-        let mut streamWrapped=listener.incoming();
-        let mut stream = streamWrapped.next().unwrap().unwrap();
-        pool.lock().unwrap().execute(move|| {
-            let mut file = File::open(file_name.clone()).unwrap();
-            let mut buffer=Vec::new();
-            let n = file.read_to_end(&mut buffer).unwrap();
-            let mut tmp_v=Vec::new();
-            tmp_v.push(val);
-            push_to_HashMap(&sharing_files_list, file_name.clone(), tmp_v);
-            stream.write(&buffer[..n]).unwrap();
-
-            let index = sharing_files_list.lock().unwrap().get(&file_name).unwrap().iter().position(|x| *x == val).unwrap(); // change to retain if what
-            sharing_files_list.lock().unwrap().get_mut(&file_name).unwrap().remove(index);
-        });
-    })
-}
-
-fn start_download(
-    pool: Arc<Mutex<ThreadPool>>,
-    remote_addr: SocketAddr,
-    file_name: String,
-    save_path_list: Arc<Mutex<HashMap<String, String>>>,
-    downloading_files_list: load_files
-)
-{
-    pool.lock().unwrap().execute(move|| {
-        let mut stream = TcpStream::connect(remote_addr).unwrap();
-        let mut buffer=Vec::new();
-        let mut tmp_v=Vec::new();
-        tmp_v.push(remote_addr.ip());
-        push_to_HashMap(&downloading_files_list, file_name.clone(), tmp_v);
-        let n = stream.read_to_end(& mut buffer).unwrap();
-        let index = downloading_files_list.lock().unwrap().get(&file_name).unwrap().iter().position(
-            |x| *x == remote_addr.ip()
-        ).unwrap(); // change to retain if what
-        downloading_files_list.lock().unwrap().get_mut(&file_name).unwrap().remove(index);
-
-        let save_path= save_path_list.lock().unwrap().remove(&file_name).unwrap();
-        let mut file = File::create( save_path + file_name.as_str()).unwrap();
-        file.write(&buffer[..n]);
-    });
-}
-
 fn run_another_daemon_listener(
     my_files_toShare_list: Arc<Mutex<Vec<String>>>,
     foreign_files_toDownload_list:Arc<Mutex<HashMap<IpAddr, Vec<String>>>>,
@@ -189,8 +187,9 @@ fn run_another_daemon_listener(
     sharing_files_list: share_files
 )
 {
-    let listener_another_daemon = UdpSocket::bind((Ipv4Addr::new(0, 0, 0, 0), PORT), ).unwrap();
+    let listener_another_daemon = UdpSocket::bind((Ipv4Addr::new(0, 0, 0, 0), PORT) ).unwrap();
     listener_another_daemon.join_multicast_v4(&MULTI_ADDR, &Ipv4Addr::new(0, 0, 0, 0));
+    let listener_tcpConnection_to_download = TcpListener::bind("localhost:8081").unwrap();
     let pool = Arc::new(Mutex::new(ThreadPool::new(4))); // hardware conc
 
     loop {
@@ -215,11 +214,13 @@ fn run_another_daemon_listener(
             Request_type::download(file_name)=>{
                 for file_name_el in  my_files_toShare_list.lock().unwrap().iter(){
                     if file_name_el == &file_name{
-                        let handle = create_TCP_chanel_to_download(
-                            pool.clone(),file_name.clone(), sharing_files_list.clone(), remote_addr.ip()
-                        );
                         send_response(Request_type::download_response(file_name.clone()), remote_addr);
-                        handle.join();
+                        accept_TCP_to_download(
+                            pool.clone(),
+                            file_name.clone(),
+                            sharing_files_list.clone(),
+                            &listener_tcpConnection_to_download
+                        );
                         break;
                     }
                 }
@@ -260,6 +261,9 @@ fn run(){
     );
 }
 
+
+
 fn main() {
     run();
 }
+
