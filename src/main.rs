@@ -71,6 +71,8 @@ fn main() {
                     let mut stream = TcpStream::connect("localhost:8080").unwrap();
                     stream.write(to_daemon.as_bytes());
 
+                    //probably should add here TcpListener
+
                     let mut buf = vec![];
                     loop {
                         match stream.read_to_end(&mut buf) {
@@ -78,6 +80,7 @@ fn main() {
                             Err(e) => panic!("encountered IO error: {}", e),
                         };
                     };
+                    stream.shutdown(Shutdown::Both);
                     let s = String::from_utf8_lossy(&buf);
                     let result : (HashMap<IpAddr, Vec<String>>) = serde_json::from_str(&s).unwrap();
                     println!("{:?}", result);
@@ -120,6 +123,8 @@ fn main() {
 
                         // stream.set_nonblocking(true).expect("set_nonblocking call failed");
                         stream.write(to_daemon.as_bytes());
+
+                        //probably should add here TcpListener
 
                         let mut buf = vec![];
                         loop {
