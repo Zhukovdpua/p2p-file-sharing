@@ -1,7 +1,10 @@
 #[macro_use]
 extern crate clap;
-use clap::{Arg, App, SubCommand};
-use p2p_file_sharing::lib::CommandType;
+use clap::{Arg, App};
+use p2p_file_sharing::CommandType;
+use std::net::{TcpListener, TcpStream, SocketAddr};
+use serde::{Serialize, Deserialize};
+use std::io::Write;
 
 fn main() {
 
@@ -22,23 +25,34 @@ fn main() {
         .get_matches();
 
         if matches.is_present("ARG1"){
-            println!("ARG1 was used!");
             if let Some(arg1_val) = matches.value_of("ARG1"){
 
                 //let m_val = arg1_val;
-                if arg1_val == "share"{
+                if arg1_val.to_lowercase() == "share"{
+                    if let Some(arg2_val) = matches.value_of("ARG2"){
 
-                   ///////////
+                    let command = CommandType::Share(arg2_val.to_string());
+                    let to_daemon = serde_json::to_string(&command).unwrap();
+                    let mut stream = TcpStream::connect("localhost:8080").unwrap();
+                    stream.write(to_daemon.as_bytes());
+                    }
                 }
-                else if arg1_val == "scan"{
+                else if arg1_val.to_lowercase() == "scan"{
 
-                    ///////////
-                }
-                else if arg1_val == "ls"{
+                    let command = CommandType::Scan;
+                    let to_daemon = serde_json::to_string(&command).unwrap();
+                    let mut stream = TcpStream::connect("localhost:8080").unwrap();
+                    stream.write(to_daemon.as_bytes());
 
-                    ////////////
                 }
-                else if arg1_val == "download" {
+                else if arg1_val.to_lowercase() == "ls"{
+
+                    let command = CommandType::Ls;
+                    let to_daemon = serde_json::to_string(&command).unwrap();
+                    let mut stream = TcpStream::connect("localhost:8080").unwrap();
+                    stream.write(to_daemon.as_bytes());
+                }
+                else if arg1_val.to_lowercase() == "download" {
                     if matches.is_present("ARG2"){
                         if matches.is_present("ARG3"){
                             if matches.is_present("ARG4"){
@@ -49,7 +63,14 @@ fn main() {
 
                                         if let Some(arg4_val) = matches.value_of("ARG4"){
 
-                                            ////////////////////////////////////
+                                            if arg3_val == "-o" {
+
+                                                let command = CommandType::Download(arg2_val.to_string(), arg4_val.to_string());
+                                                let to_daemon = serde_json::to_string(&command).unwrap();
+                                                let mut stream = TcpStream::connect("localhost:8080").unwrap();
+                                                stream.write(to_daemon.as_bytes());
+                                            }
+
                                         }
                                     }
                                 }
@@ -57,10 +78,15 @@ fn main() {
                         }
                     }
                 }
-                else if arg1_val == "status" {
+                else if arg1_val.to_lowercase() == "status" {
 
-                    ///////////
+                    let command = CommandType::Status;
+                    let to_daemon = serde_json::to_string(&command).unwrap();
+                    let mut stream = TcpStream::connect("localhost:8080").unwrap();
+                    stream.write(to_daemon.as_bytes());
                 }
             }
         }
 }
+
+
