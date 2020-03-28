@@ -2,9 +2,12 @@
 extern crate clap;
 use clap::{Arg, App};
 use p2p_file_sharing::CommandType;
-use std::net::{TcpListener, TcpStream, SocketAddr};
+use std::net::{TcpListener, TcpStream, SocketAddr, Shutdown, IpAddr};
 use serde::{Serialize, Deserialize};
-use std::io::Write;
+use std::io::{Read, Write};
+use std::vec;
+use std::fmt;
+use std::collections::HashMap;
 
 fn main() {
 
@@ -28,29 +31,56 @@ fn main() {
             if let Some(arg1_val) = matches.value_of("ARG1"){
 
                 //let m_val = arg1_val;
-                if arg1_val.to_lowercase() == "share"{
-                    if let Some(arg2_val) = matches.value_of("ARG2"){
+                if arg1_val.to_lowercase() == "share" {
+                    if let Some(arg2_val) = matches.value_of("ARG2") {
 
                     let command = CommandType::Share(arg2_val.to_string());
                     let to_daemon = serde_json::to_string(&command).unwrap();
-                    let mut stream = TcpStream::connect("localhost:8080").unwrap();
-                    stream.write(to_daemon.as_bytes());
+                    if let Ok(mut stream) = TcpStream::connect("localhost:8080") {
+
+                      // stream.set_nonblocking(true).expect("set_nonblocking call failed");
+                       stream.write(to_daemon.as_bytes());
+
+                       stream.shutdown(Shutdown::Both);
+                    }
+                        else {
+                            println!("Error connection to a daemon!");
+                        }
+
                     }
                 }
                 else if arg1_val.to_lowercase() == "scan"{
 
                     let command = CommandType::Scan;
                     let to_daemon = serde_json::to_string(&command).unwrap();
-                    let mut stream = TcpStream::connect("localhost:8080").unwrap();
-                    stream.write(to_daemon.as_bytes());
+                    if let Ok(mut stream) = TcpStream::connect("localhost:8080") {
 
+                        // stream.set_nonblocking(true).expect("set_nonblocking call failed");
+                        stream.write(to_daemon.as_bytes());
+
+                        stream.shutdown(Shutdown::Both);
+                    }
+                    else {
+                        println!("Error connection to a daemon!");
+                    }
                 }
-                else if arg1_val.to_lowercase() == "ls"{
+                else if arg1_val.to_lowercase() == "ls" {
 
                     let command = CommandType::Ls;
                     let to_daemon = serde_json::to_string(&command).unwrap();
                     let mut stream = TcpStream::connect("localhost:8080").unwrap();
                     stream.write(to_daemon.as_bytes());
+
+                    let mut buf = vec![];
+                    loop {
+                        match stream.read_to_end(&mut buf) {
+                            Ok(_) => break,
+                            Err(e) => panic!("encountered IO error: {}", e),
+                        };
+                    };
+                    let s = String::from_utf8_lossy(&buf);
+                    let result : (HashMap<IpAddr, Vec<String>>) = serde_json::from_str(&s).unwrap();
+                    println!("{:?}", result);
                 }
                 else if arg1_val.to_lowercase() == "download" {
                     if matches.is_present("ARG2"){
@@ -65,8 +95,16 @@ fn main() {
 
                                                 let command = CommandType::Download(arg2_val.to_string(), arg3_val.to_string());
                                                 let to_daemon = serde_json::to_string(&command).unwrap();
-                                                let mut stream = TcpStream::connect("localhost:8080").unwrap();
+                                            if let Ok(mut stream) = TcpStream::connect("localhost:8080") {
+
+                                                // stream.set_nonblocking(true).expect("set_nonblocking call failed");
                                                 stream.write(to_daemon.as_bytes());
+
+                                                stream.shutdown(Shutdown::Both);
+                                            }
+                                            else {
+                                                println!("Error connection to a daemon!");
+                                            }
                                         }
                                     }
                                 }
@@ -78,8 +116,27 @@ fn main() {
 
                     let command = CommandType::Status;
                     let to_daemon = serde_json::to_string(&command).unwrap();
-                    let mut stream = TcpStream::connect("localhost:8080").unwrap();
-                    stream.write(to_daemon.as_bytes());
+                    if let Ok(mut stream) = TcpStream::connect("localhost:8080") {
+
+                        // stream.set_nonblocking(true).expect("set_nonblocking call failed");
+                        stream.write(to_daemon.as_bytes());
+
+                        let mut buf = vec![];
+                        loop {
+                            match stream.read_to_end(&mut buf) {
+                                Ok(_) => break,
+                                Err(e) => panic!("encountered IO error: {}", e),
+                            };
+                        };
+                        let s = String::from_utf8_lossy(&buf);
+                        let result : (HashMap<String, Vec<IpAddr>>, HashMap<String, Vec<IpAddr>>) = serde_json::from_str(&s).unwrap();
+                        println!("{:?}", result);
+
+                        stream.shutdown(Shutdown::Both);
+                    }
+                    else {
+                        println!("Error connection to a daemon!");
+                    }
                 }
             }
         }
