@@ -20,8 +20,8 @@ fn main() {
         .about("The application allows for decentralized file sharing")
         .arg(Arg::with_name("ARG1").required(true).help("Command name"))
         .arg(Arg::with_name("ARG2").help("FILE_PATH for share command or FILE_NAME for download command"))
-        .arg(Arg::with_name("ARG3").help("Command flag"))
-        .arg(Arg::with_name("ARG4").help("SAVE PATH"))
+        .arg(Arg::with_name("ARG3").help("SAVE PATH"))
+        .arg(Arg::with_name("FLG1").help("Flag for saving with a forward string name").short("o"))
         .get_matches();
 
         if matches.is_present("ARG1"){
@@ -54,23 +54,19 @@ fn main() {
                 }
                 else if arg1_val.to_lowercase() == "download" {
                     if matches.is_present("ARG2"){
-                        if matches.is_present("ARG3"){
-                            if matches.is_present("ARG4"){
+                        if matches.is_present("FLG1"){
+                            if matches.is_present("ARG3"){
 
                                 if let Some(arg2_val) = matches.value_of("ARG2"){
 
-                                    if let Some(arg3_val) = matches.value_of("ARG3"){
+                                    if let Some(flg1_val) = matches.value_of("FLG1"){
 
-                                        if let Some(arg4_val) = matches.value_of("ARG4"){
+                                        if let Some(arg3_val) = matches.value_of("ARG3"){
 
-                                            if arg3_val == "-o" {
-
-                                                let command = CommandType::Download(arg2_val.to_string(), arg4_val.to_string());
+                                                let command = CommandType::Download(arg2_val.to_string(), arg3_val.to_string());
                                                 let to_daemon = serde_json::to_string(&command).unwrap();
                                                 let mut stream = TcpStream::connect("localhost:8080").unwrap();
                                                 stream.write(to_daemon.as_bytes());
-                                            }
-
                                         }
                                     }
                                 }
