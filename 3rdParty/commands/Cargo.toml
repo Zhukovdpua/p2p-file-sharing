@@ -1,0 +1,8 @@
+[package]
+name = "commands"
+version = "0.1.0"
+authors = ["SerjKocherga <31800421+SerjKocherga@users.noreply.github.com>"]
+edition = "2018"
+
+[dependencies]
+serde = "1.0"

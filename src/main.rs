@@ -1,7 +1,8 @@
 #[macro_use]
 extern crate clap;
+use commands::CommandType;
+//use commands::ResponseType;
 use clap::{Arg, App};
-use p2p_file_sharing::CommandType;
 use std::net::{TcpStream, IpAddr};
 use std::io::{Read, Write};
 use std::vec;
@@ -45,7 +46,6 @@ fn main() {
                         else {
                             println!("Error connection to a daemon!");
                         }
-
                     }
                 }
                 else if arg1_val.to_lowercase() == "scan"{

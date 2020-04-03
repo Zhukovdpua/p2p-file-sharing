@@ -14,3 +14,7 @@ ipconfig = "0.2"
 
 [target.'cfg(unix)'.dependencies]
 machine-ip = "0.2"
+
+[lib]
+name = "commands"
+path = "3rdParty/commands/src/lib.rs"
