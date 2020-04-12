@@ -1,16 +1,46 @@
 #[macro_use]
 extern crate clap;
-use commands::CommandType;
-//use commands::ResponseType;
+use p2p_file_sharing_enum_commands::{
+    CommandType, LsResponseType, ResponseType, StatusResponseType, PORT,
+};
 use clap::{Arg, App};
-use std::net::{TcpStream, IpAddr};
+use std::net::{TcpStream, IpAddr, Ipv4Addr};
 use std::io::{Read, Write};
 use std::vec;
 use std::collections::HashMap;
 
+pub type Filename = String;
+pub type Container = HashMap<Filename, Vec<IpAddr>>;
+
+pub fn read_response (connection: &mut TcpStream) -> ResponseType {
+
+let mut buf: Vec<u8> = vec![];
+let n = connection.read_to_end(&mut buf).unwrap();
+let command: ResponseType = serde_json::from_str(&String::from_utf8_lossy(&buf[..n])).unwrap();
+
+command
+}
+
+fn pretty_print_container(container: &Container) {
+    for (filename, addresses) in container.into_iter() {
+        println!("  The file '{filename}' are downloading peers:", filename = filename);
+
+        for address in addresses {
+            println!("      {address}", address = address);
+        }
+    }
+}
+
+fn pretty_print(containers: (&Container, &Container)) {
+    println!("Files to download:");
+    pretty_print_container(containers.0);
+    println!("------------------------------");
+    println!("Downloading files:");
+    pretty_print_container(containers.1);
+}
+
 fn main() {
 
-    //should we use multiple for args ?
     let matches = App::new("P2P File Sharing")
         .author(crate_authors!())
         .version(crate_version!())
@@ -35,13 +65,19 @@ fn main() {
 
                     let command = CommandType::Share(arg2_val.to_string());
                     let to_daemon = serde_json::to_string(&command).unwrap();
-                    if let Ok(mut stream) = TcpStream::connect("localhost:8080") {
+                    if let Ok(mut stream) = TcpStream::connect((IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), PORT)) {
 
                       match stream.write(to_daemon.as_bytes()) {
 
                           Ok(_) => println!("Your [share] request has been sent"),
                           Err(e) => println!("Error: {} while stream transfers data", e)
                       }
+
+                        match read_response(&mut stream) {
+                            ResponseType::ShareScan => println!("Share command success!"),
+                            ResponseType::Error(err) => println!("{}", err),
+                            _ => println!("Something wrong! Try again later")
+                        }
                     }
                         else {
                             println!("Error connection to a daemon!");
@@ -52,12 +88,18 @@ fn main() {
 
                     let command = CommandType::Scan;
                     let to_daemon = serde_json::to_string(&command).unwrap();
-                    if let Ok(mut stream) = TcpStream::connect("localhost:8080") {
+                    if let Ok(mut stream) = TcpStream::connect((IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), PORT)) {
 
                         match stream.write(to_daemon.as_bytes()) {
 
                             Ok(_) => println!("Your [scan] request has been sent"),
                             Err(e) => println!("Error: {} while stream transfers data", e)
+                        }
+
+                        match read_response(&mut stream) {
+                            ResponseType::ShareScan => println!("Scan command success!"),
+                            ResponseType::Error(err) => println!("{}", err),
+                            _ => println!("Something wrong! Try again later")
                         }
                     }
                     else {
@@ -68,24 +110,22 @@ fn main() {
 
                     let command = CommandType::Ls;
                     let to_daemon = serde_json::to_string(&command).unwrap();
-                    if let Ok(mut stream) = TcpStream::connect("localhost:8080") {
+                    if let Ok(mut stream) = TcpStream::connect((IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), PORT)) {
 
                         match stream.write(to_daemon.as_bytes()) {
                             Ok(_) => println!("Your [ls] request has been sent"),
                             Err(e) => println!("Error: {} while stream transfers data", e)
                         }
 
-                        let mut buf = vec![];
-                        loop {
-                            match stream.read_to_end(&mut buf) {
-                                Ok(_) => break,
-                                Err(e) => panic!("encountered IO error: {}", e),
-                            };
-                        };
+                        match read_response(&mut stream) {
+                            ResponseType::Ls(str) => {
+                                let container: LsResponseType = serde_json::from_str(&str).unwrap();
+                                println!("{:?}", container);
+                            },
+                            ResponseType::Error(err) => println!("{}", err),
+                            _ => println!("Something wrong! Try again later")
+                        }
 
-                        let s = String::from_utf8_lossy(&buf);
-                        let result: HashMap<IpAddr, Vec<String>> = serde_json::from_str(&s).unwrap();
-                        println!("{:?}", result);
                     }
                     else {
 
@@ -103,12 +143,23 @@ fn main() {
 
                                                 let command = CommandType::Download(arg2_val.to_string(), arg3_val.to_string());
                                                 let to_daemon = serde_json::to_string(&command).unwrap();
-                                                if let Ok(mut stream) = TcpStream::connect("localhost:8080") {
+                                                if let Ok(mut stream) = TcpStream::connect((IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), PORT)) {
 
                                                     match stream.write(to_daemon.as_bytes()) {
 
                                                         Ok(_) => println!("Your [download] request has been sent"),
                                                         Err(e) => println!("Error: {} while stream transfers data", e)
+                                                    }
+
+                                                    match read_response(&mut stream) {
+                                                        ResponseType::Download(answer) => {
+                                                            match answer {
+                                                                true => println!("Download started!"),
+                                                                false => println!("The file does not exist!")
+                                                            }
+                                                        },
+                                                        ResponseType::Error(err) => println!("{}", err),
+                                                        _ => println!("Something wrong! Try again later")
                                                     }
                                             }
                                             else {
@@ -124,24 +175,23 @@ fn main() {
 
                     let command = CommandType::Status;
                     let to_daemon = serde_json::to_string(&command).unwrap();
-                    if let Ok(mut stream) = TcpStream::connect("localhost:8080") {
+                    if let Ok(mut stream) = TcpStream::connect((IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), PORT)) {
 
                         match stream.write(to_daemon.as_bytes()) {
 
-                            Ok(_) => println!("Your share [status] has been sent"),
-                            Err(e) => println!("Error: {} while stream transfers data", e)
+                            Ok(_) => println!("Your [status] command has been sent!"),
+                            Err(e) => println!("Error: {} while stream transfers data!", e)
                         }
 
-                        let mut buf = vec![];
-                        loop {
-                            match stream.read_to_end(&mut buf) {
-                                Ok(_) => break,
-                                Err(e) => panic!("encountered IO error: {}", e),
-                            };
-                        };
-                        let s = String::from_utf8_lossy(&buf);
-                        let result : (HashMap<String, Vec<IpAddr>>, HashMap<String, Vec<IpAddr>>) = serde_json::from_str(&s).unwrap();
-                        println!("{:?}", result);
+                        match read_response(&mut stream) {
+                            ResponseType::Status(str) => {
+                                let container: StatusResponseType = serde_json::from_str(&str).unwrap();
+                                pretty_print((&container.0, &container.1));
+                            },
+                            ResponseType::Error(err) => println!("{}", err),
+                            _ => println!("Something wrong! Try again later")
+                        }
+
                     }
                     else {
                         println!("Error connection to a daemon!");
