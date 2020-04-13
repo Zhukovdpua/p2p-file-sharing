@@ -134,14 +134,21 @@ fn main() {
                 }
                 else if arg1_val.to_lowercase() == "download" {
                     if matches.is_present("ARG2"){
-                        if matches.is_present("FLG1"){
-                            if matches.is_present("ARG3"){
+                        if let Some(arg2_val) = matches.value_of("ARG2"){
 
-                                if let Some(arg2_val) = matches.value_of("ARG2"){
+                                                let command = {
 
-                                        if let Some(arg3_val) = matches.value_of("ARG3"){
-
-                                                let command = CommandType::Download(arg2_val.to_string(), arg3_val.to_string());
+                                                    if matches.is_present("FLG1") {
+                                                        if matches.is_present("ARG3") {
+                                                            if let Some(arg3_val) = matches.value_of("ARG3") {
+                                                                CommandType::Download(arg2_val.to_string(), arg3_val.to_string());
+                                                            }
+                                                        }
+                                                    }
+                                                    else {
+                                                        CommandType::Download(arg2_val.to_string(), String::new());
+                                                    }
+                                                };
                                                 let to_daemon = serde_json::to_string(&command).unwrap();
                                                 if let Ok(mut stream) = TcpStream::connect((IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), PORT)) {
 
@@ -165,9 +172,6 @@ fn main() {
                                             else {
                                                 println!("Error connection to a daemon!");
                                             }
-                                        }
-                                }
-                            }
                         }
                     }
                 }
