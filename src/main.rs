@@ -136,26 +136,38 @@ fn main() {
                     if matches.is_present("ARG2"){
                         if let Some(arg2_val) = matches.value_of("ARG2"){
 
-                                                let command = {
+
+
+
+
+
+
+
+                                                if let Ok(mut stream) = TcpStream::connect((IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), PORT)) {
 
                                                     if matches.is_present("FLG1") {
                                                         if matches.is_present("ARG3") {
+
                                                             if let Some(arg3_val) = matches.value_of("ARG3") {
-                                                                CommandType::Download(arg2_val.to_string(), arg3_val.to_string());
+                                                                let command = CommandType::Download(arg2_val.to_string(), arg3_val.to_string());
+                                                                let to_daemon = serde_json::to_string(&command).unwrap();
+
+                                                                match stream.write(to_daemon.as_bytes()) {
+
+                                                                    Ok(_) => println!("Your [download] request has been sent"),
+                                                                    Err(e) => println!("Error: {} while stream transfers data", e)
+                                                                }
                                                             }
                                                         }
-                                                    }
-                                                    else {
-                                                        CommandType::Download(arg2_val.to_string(), String::new());
-                                                    }
-                                                };
-                                                let to_daemon = serde_json::to_string(&command).unwrap();
-                                                if let Ok(mut stream) = TcpStream::connect((IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), PORT)) {
+                                                    } else {
 
-                                                    match stream.write(to_daemon.as_bytes()) {
+                                                        let command = CommandType::Download(arg2_val.to_string(), String::new());
+                                                        let to_daemon = serde_json::to_string(&command).unwrap();
+                                                        match stream.write(to_daemon.as_bytes()) {
 
-                                                        Ok(_) => println!("Your [download] request has been sent"),
-                                                        Err(e) => println!("Error: {} while stream transfers data", e)
+                                                            Ok(_) => println!("Your [download] request has been sent"),
+                                                            Err(e) => println!("Error: {} while stream transfers data", e)
+                                                        }
                                                     }
 
                                                     match read_response(&mut stream) {
