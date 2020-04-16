@@ -1,3 +1,5 @@
+use crate::client_listen::filter_peers;
+use crate::client_listen::find_file;
 use crate::client_listen::remove_tuple_to_ls_response;
 use crate::client_listen::select_downloading_files_to_send;
 use crate::client_listen::select_sharing_files_to_send;
@@ -6,7 +8,6 @@ use crate::common::mark_unmark;
 use std::collections::HashMap;
 use std::net::{IpAddr, Ipv4Addr};
 use std::sync::{Arc, Mutex};
-// добавить тесты из rust multicast
 
 #[test]
 fn extract_file_name_test() {
@@ -31,6 +32,148 @@ fn extract_file_name_test() {
         extract_file_name(String::from("movie.mp4")),
         String::from("movie.mp4")
     );
+}
+
+#[test]
+fn find_file_test() {
+    {
+        let file_1_name = String::from("key.txt");
+        let remote_addr = IpAddr::V4(Ipv4Addr::new(231, 0, 0, 1));
+
+        let foreign_files_to_download_list = Arc::new(Mutex::new(HashMap::new()));
+        foreign_files_to_download_list
+            .lock()
+            .unwrap()
+            .insert(remote_addr, vec![(file_1_name.clone(), false)]);
+        let result = vec![remote_addr];
+
+        assert_eq!(
+            find_file(&foreign_files_to_download_list, file_1_name),
+            Some(result)
+        );
+    }
+
+    {
+        let file_1_name = String::from("key.txt");
+        let remote_addr = IpAddr::V4(Ipv4Addr::new(231, 0, 0, 1));
+
+        let foreign_files_to_download_list = Arc::new(Mutex::new(HashMap::new()));
+        foreign_files_to_download_list
+            .lock()
+            .unwrap()
+            .insert(remote_addr, vec![(file_1_name.clone(), false)]);
+
+        assert_eq!(
+            find_file(&foreign_files_to_download_list, String::from("resume.pdf")),
+            None
+        );
+    }
+
+    {
+        let foreign_files_to_download_list = Arc::new(Mutex::new(HashMap::new()));
+        assert_eq!(
+            find_file(&foreign_files_to_download_list, String::from("resume.pdf")),
+            None
+        );
+    }
+    {
+        let file_1_name = String::from("Serious_sam.exe");
+        let file_2_name = String::from("film.mp4");
+        let file_3_name = String::from("resume.pdf");
+        let remote_addr = IpAddr::V4(Ipv4Addr::new(231, 0, 0, 1));
+
+        let foreign_files_to_download_list = Arc::new(Mutex::new(HashMap::new()));
+        foreign_files_to_download_list.lock().unwrap().insert(
+            remote_addr,
+            vec![
+                (file_1_name.clone(), false),
+                (file_2_name.clone(), false),
+                (file_3_name.clone(), false),
+            ],
+        );
+
+        let result = vec![remote_addr];
+
+        assert_eq!(
+            find_file(&foreign_files_to_download_list, file_2_name),
+            Some(result)
+        );
+    }
+
+    {
+        let file_1_name = String::from("Serious_sam.exe");
+        let file_2_name = String::from("film.mp4");
+        let file_3_name = String::from("resume.pdf");
+
+        let remote_addr_1 = IpAddr::V4(Ipv4Addr::new(231, 0, 0, 1));
+        let remote_addr_2 = IpAddr::V4(Ipv4Addr::new(231, 0, 2, 1));
+
+        let foreign_files_to_download_list = Arc::new(Mutex::new(HashMap::new()));
+        foreign_files_to_download_list.lock().unwrap().insert(
+            remote_addr_1,
+            vec![(file_1_name.clone(), false), (file_2_name.clone(), false)],
+        );
+
+        foreign_files_to_download_list.lock().unwrap().insert(
+            remote_addr_2,
+            vec![
+                (file_3_name.clone(), false),
+                (file_2_name.clone(), false),
+                (file_1_name.clone(), false),
+            ],
+        );
+
+        let f = find_file(&foreign_files_to_download_list, file_2_name);
+        assert_eq!(
+            (f == Some(vec![remote_addr_1, remote_addr_2])
+                || f == Some(vec![remote_addr_2, remote_addr_1])),
+            true
+        );
+        assert_eq!(f.unwrap().len(), 2);
+    }
+
+    {
+        let file_1_name = String::from("key.txt");
+        let remote_addr = IpAddr::V4(Ipv4Addr::new(231, 0, 0, 1));
+
+        let foreign_files_to_download_list = Arc::new(Mutex::new(HashMap::new()));
+        foreign_files_to_download_list
+            .lock()
+            .unwrap()
+            .insert(remote_addr, vec![(file_1_name.clone(), true)]);
+
+        assert_eq!(
+            find_file(&foreign_files_to_download_list, file_1_name),
+            None
+        );
+    }
+
+    {
+        let file_1_name = String::from("Serious_sam.exe");
+        let file_2_name = String::from("film.mp4");
+        let file_3_name = String::from("resume.pdf");
+
+        let remote_addr_1 = IpAddr::V4(Ipv4Addr::new(231, 0, 0, 1));
+        let remote_addr_2 = IpAddr::V4(Ipv4Addr::new(231, 0, 2, 1));
+
+        let foreign_files_to_download_list = Arc::new(Mutex::new(HashMap::new()));
+        foreign_files_to_download_list.lock().unwrap().insert(
+            remote_addr_1,
+            vec![(file_1_name.clone(), false), (file_2_name.clone(), false)],
+        );
+
+        foreign_files_to_download_list.lock().unwrap().insert(
+            remote_addr_2,
+            vec![
+                (file_3_name.clone(), false),
+                (file_2_name.clone(), true),
+                (file_1_name.clone(), false),
+            ],
+        );
+
+        let f = find_file(&foreign_files_to_download_list, file_2_name);
+        assert_eq!(f, None);
+    }
 }
 
 #[test]
@@ -477,3 +620,38 @@ fn select_sharing_files_to_send_test() {
         );
     }
 }
+
+// !!! Hardware specific !!!
+
+// #[test]
+// fn filter_peers_test() {
+//     {
+//         let remote_addr = IpAddr::V4(Ipv4Addr::new(231, 0, 0, 1));
+//         let actual_peers = vec![remote_addr];
+//         let actual_result = filter_peers(&actual_peers);
+//         assert_eq!(actual_result.len(), 1);
+//         assert_eq!(actual_result, vec![remote_addr]);
+//     }
+//
+//     {
+//         let remote_addr_1 = IpAddr::V4(Ipv4Addr::new(231, 0, 0, 1));
+//         let remote_addr_2 = IpAddr::V4(Ipv4Addr::new(231, 0, 0, 2));
+//         let actual_peers = vec![remote_addr_1, remote_addr_2];
+//         let actual_result = filter_peers(&actual_peers);
+//         assert_eq!(actual_result.len(), 2);
+//     }
+//
+//     {
+//         let remote_addr_1 = IpAddr::V4(Ipv4Addr::new(231, 0, 0, 1));
+//         let remote_addr_2 = IpAddr::V4(Ipv4Addr::new(231, 0, 0, 2));
+//         let remote_addr_3 = IpAddr::V4(Ipv4Addr::new(231, 0, 0, 3));
+//         let actual_peers = vec![remote_addr_1, remote_addr_2, remote_addr_3];
+//         let actual_result = filter_peers(&actual_peers);
+//         assert_eq!(actual_result.len(), 2);
+//         assert_eq!(
+//             (actual_result == vec![remote_addr_1, remote_addr_2]
+//                 || actual_result == vec![remote_addr_2, remote_addr_1]),
+//             true
+//         );
+//     }
+// }

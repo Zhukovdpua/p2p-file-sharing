@@ -1,4 +1,4 @@
-use crate::common::{extract_file_name, send_file, StringVecIp};
+use crate::common::{extract_file_name, send_file, DownloadData, StringVecIp};
 use p2p_file_sharing_enum_commands::PORT;
 use std::io::Read;
 use std::net::{Ipv4Addr, TcpListener};
@@ -15,18 +15,33 @@ pub fn listen_to_other_demons_via_tcp(
         for stream in listener.incoming() {
             match stream {
                 Ok(mut stream) => {
-                    let mut file_name = vec![0; 4096];
-                    let n = match stream.read(&mut file_name) {
+                    let mut download_data = vec![0; 4096];
+                    let n = match stream.read(&mut download_data) {
                         Ok(n) => n,
                         Err(err) => {
                             eprint!("Occurs error: {}", err);
                             continue;
                         }
                     };
-                    let file_name: String = String::from_utf8_lossy(&file_name[..n]).into(); // посмотрерть на cow<string>
+
+                    let download_data: DownloadData =
+                        match serde_json::from_str(&String::from_utf8_lossy(&download_data[..n])) {
+                            Ok(download_data) => download_data,
+                            Err(err) => {
+                                eprint!("Occurs error: {}", err);
+                                continue;
+                            }
+                        };
+
                     for (key, _val) in my_files_to_share_list.lock().unwrap().iter() {
-                        if file_name == extract_file_name(key.clone()) {
-                            send_file(&pool, key.clone(), my_files_to_share_list.clone(), stream);
+                        if download_data.file_name == extract_file_name(key.clone()) {
+                            send_file(
+                                &pool,
+                                key.clone(),
+                                my_files_to_share_list.clone(),
+                                stream,
+                                download_data,
+                            );
                             break;
                         }
                     }

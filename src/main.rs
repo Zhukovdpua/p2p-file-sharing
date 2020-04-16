@@ -1,11 +1,11 @@
 extern crate num_cpus;
 
+use p2p_file_sharing::client_listen::listen_to_client;
+use p2p_file_sharing::daemon_multicast_listen::listen_to_other_demons_via_multicast;
+use p2p_file_sharing::daemon_tcp_listen::listen_to_other_demons_via_tcp;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use threadpool::ThreadPool;
-use p2p_file_sharing::client_listen::listen_to_client;
-use p2p_file_sharing::daemon_tcp_listen::listen_to_other_demons_via_tcp;
-use p2p_file_sharing::daemon_multicast_listen::listen_to_other_demons_via_multicast;
 
 fn main() {
     let my_files_to_share_list = Arc::new(Mutex::new(HashMap::new()));

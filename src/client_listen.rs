@@ -45,12 +45,13 @@ fn process_client_command_buffer(
         )?)),
         CommandType::Download(file_name, save_path) => {
             match find_file(&foreign_files_to_download_list, file_name.clone()) {
-                Some(ip) => {
+                Some(ips) => {
+                    let ips = filter_peers(&ips);
                     recv_file(
                         &pool,
-                        ip,
+                        ips,
                         save_path + &file_name,
-                        foreign_files_to_download_list.clone(),
+                        &foreign_files_to_download_list,
                     );
                     Ok(ResponseType::Download(true))
                 }
@@ -126,15 +127,24 @@ pub fn listen_to_client(
     });
 }
 
+pub fn filter_peers(actual_peers: &[IpAddr]) -> Vec<IpAddr> {
+    let mut result = Vec::new();
+    let cpu_available = num_cpus::get() - 2;
+    let mut i = 0;
+    for peer in actual_peers {
+        result.push(*peer);
+        i += 1;
+        if i >= cpu_available {
+            break;
+        }
+    }
+    result
+}
+
 pub fn remove_tuple_to_ls_response(foreign_files_to_download_list: &IpVecString) -> LsResponseType {
     let mut files_to_send = HashMap::new();
     for (key, val) in foreign_files_to_download_list.lock().unwrap().iter() {
-        files_to_send.insert(*key, vec![]);
-        let mut tmp_v = Vec::new();
-        for (file_name, _) in val.iter() {
-            tmp_v.push(file_name.clone());
-        }
-        files_to_send.insert(*key, tmp_v);
+        files_to_send.insert(*key, val.iter().map(|x| x.0.clone()).collect());
     }
     files_to_send
 }
@@ -144,12 +154,10 @@ pub fn select_sharing_files_to_send(
 ) -> HashMap<String, Vec<IpAddr>> {
     let mut files_to_send = HashMap::new();
     for (key, val) in my_files_to_share_list.lock().unwrap().iter() {
-        files_to_send.insert(key.clone(), vec![]);
-        for (addr, is_download) in val.iter() {
-            if *is_download {
-                files_to_send.get_mut(key).unwrap().push(addr.clone());
-            }
-        }
+        files_to_send.insert(
+            key.clone(),
+            val.iter().filter(|x| x.1).map(|x| x.0).collect(),
+        );
     }
     files_to_send
 }
@@ -169,14 +177,21 @@ pub fn select_downloading_files_to_send(
     x
 }
 
-fn find_file(foreign_files_to_download_list: &IpVecString, file_name: String) -> Option<IpAddr> {
+pub fn find_file(
+    foreign_files_to_download_list: &IpVecString,
+    file_name: String,
+) -> Option<Vec<IpAddr>> {
+    let mut actual_peers = Vec::new();
     for (key, val) in foreign_files_to_download_list.lock().unwrap().iter() {
         if let Some(file_name) = val.iter().find(|x| x.0 == file_name) {
             if file_name.1 {
                 return None;
             }
-            return Some(*key);
+            actual_peers.push(*key);
         }
+    }
+    if !actual_peers.is_empty() {
+        return Some(actual_peers);
     }
     None
 }
