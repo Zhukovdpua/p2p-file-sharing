@@ -1,6 +1,6 @@
 [package]
 name = "p2p-file-sharing"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Alexandr Zhukov <pridett2012@gmail.com>, Serhii Kocherha <serj911kocherga@gmail.com>"]
 edition = "2018"
 

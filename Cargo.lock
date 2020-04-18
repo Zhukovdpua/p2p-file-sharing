@@ -85,7 +85,7 @@ checksum = "8197ad28c61566fb74b2167563865906215fbc32c61fd866bd54e7c195eb84ed"
 
 [[package]]
 name = "p2p-file-sharing"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "clap",
  "ipconfig",
