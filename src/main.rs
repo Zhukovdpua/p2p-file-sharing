@@ -1,43 +1,13 @@
 #[macro_use]
 extern crate clap;
+mod functions;
 use p2p_file_sharing_enum_commands::{
     CommandType, LsResponseType, ResponseType, StatusResponseType, PORT,
 };
 use clap::{Arg, App};
 use std::net::{TcpStream, IpAddr, Ipv4Addr};
-use std::io::{Read, Write};
-use std::vec;
-use std::collections::HashMap;
-
-pub type Filename = String;
-pub type Container = HashMap<Filename, Vec<IpAddr>>;
-
-pub fn read_response (connection: &mut TcpStream) -> ResponseType {
-
-let mut buf: Vec<u8> = vec![];
-let n = connection.read_to_end(&mut buf).unwrap();
-let command: ResponseType = serde_json::from_str(&String::from_utf8_lossy(&buf[..n])).unwrap();
-
-command
-}
-
-fn pretty_print_container(container: &Container) {
-    for (filename, addresses) in container.into_iter() {
-        println!("  The file '{filename}' are downloading peers:", filename = filename);
-
-        for address in addresses {
-            println!("      {address}", address = address);
-        }
-    }
-}
-
-fn pretty_print(containers: (&Container, &Container)) {
-    println!("Files to download:");
-    pretty_print_container(containers.0);
-    println!("------------------------------");
-    println!("Downloading files:");
-    pretty_print_container(containers.1);
-}
+use std::io::Write;
+use functions::{read_response, pretty_print};
 
 fn main() {
 
@@ -69,14 +39,13 @@ fn main() {
 
                       match stream.write(to_daemon.as_bytes()) {
 
-                          Ok(_) => println!("Your [share] request has been sent"),
+                          Ok(_) => {},
                           Err(e) => println!("Error: {} while stream transfers data", e)
                       }
 
                         match read_response(&mut stream) {
-                            ResponseType::ShareScan => println!("Share command success!"),
                             ResponseType::Error(err) => println!("{}", err),
-                            _ => println!("Something wrong! Try again later")
+                            _ => println!("Something wrong! Try again later.")
                         }
                     }
                         else {
@@ -92,12 +61,11 @@ fn main() {
 
                         match stream.write(to_daemon.as_bytes()) {
 
-                            Ok(_) => println!("Your [scan] request has been sent"),
+                            Ok(_) => {},
                             Err(e) => println!("Error: {} while stream transfers data", e)
                         }
 
                         match read_response(&mut stream) {
-                            ResponseType::ShareScan => println!("Scan command success!"),
                             ResponseType::Error(err) => println!("{}", err),
                             _ => println!("Something wrong! Try again later")
                         }
@@ -113,7 +81,7 @@ fn main() {
                     if let Ok(mut stream) = TcpStream::connect((IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), PORT)) {
 
                         match stream.write(to_daemon.as_bytes()) {
-                            Ok(_) => println!("Your [ls] request has been sent"),
+                            Ok(_) => {},
                             Err(e) => println!("Error: {} while stream transfers data", e)
                         }
 
@@ -125,7 +93,6 @@ fn main() {
                             ResponseType::Error(err) => println!("{}", err),
                             _ => println!("Something wrong! Try again later")
                         }
-
                     }
                     else {
 
@@ -136,54 +103,48 @@ fn main() {
                     if matches.is_present("ARG2"){
                         if let Some(arg2_val) = matches.value_of("ARG2"){
 
+                            if let Ok(mut stream) = TcpStream::connect((IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), PORT)) {
 
+                                if matches.is_present("FLG1") {
+                                    if matches.is_present("ARG3") {
 
+                                        if let Some(arg3_val) = matches.value_of("ARG3") {
+                                            let command = CommandType::Download(arg2_val.to_string(), arg3_val.to_string());
+                                            let to_daemon = serde_json::to_string(&command).unwrap();
 
+                                            match stream.write(to_daemon.as_bytes()) {
 
-
-
-
-                                                if let Ok(mut stream) = TcpStream::connect((IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), PORT)) {
-
-                                                    if matches.is_present("FLG1") {
-                                                        if matches.is_present("ARG3") {
-
-                                                            if let Some(arg3_val) = matches.value_of("ARG3") {
-                                                                let command = CommandType::Download(arg2_val.to_string(), arg3_val.to_string());
-                                                                let to_daemon = serde_json::to_string(&command).unwrap();
-
-                                                                match stream.write(to_daemon.as_bytes()) {
-
-                                                                    Ok(_) => println!("Your [download] request has been sent"),
-                                                                    Err(e) => println!("Error: {} while stream transfers data", e)
-                                                                }
-                                                            }
-                                                        }
-                                                    } else {
-
-                                                        let command = CommandType::Download(arg2_val.to_string(), String::new());
-                                                        let to_daemon = serde_json::to_string(&command).unwrap();
-                                                        match stream.write(to_daemon.as_bytes()) {
-
-                                                            Ok(_) => println!("Your [download] request has been sent"),
-                                                            Err(e) => println!("Error: {} while stream transfers data", e)
-                                                        }
-                                                    }
-
-                                                    match read_response(&mut stream) {
-                                                        ResponseType::Download(answer) => {
-                                                            match answer {
-                                                                true => println!("Download started!"),
-                                                                false => println!("The file does not exist!")
-                                                            }
-                                                        },
-                                                        ResponseType::Error(err) => println!("{}", err),
-                                                        _ => println!("Something wrong! Try again later")
-                                                    }
+                                                Ok(_) => {},
+                                                Err(e) => println!("Error: {} while stream transfers data", e)
                                             }
-                                            else {
-                                                println!("Error connection to a daemon!");
-                                            }
+                                        }
+                                    }
+                                }
+                                else {
+
+                                    let command = CommandType::Download(arg2_val.to_string(), String::new());
+                                    let to_daemon = serde_json::to_string(&command).unwrap();
+                                    match stream.write(to_daemon.as_bytes()) {
+
+                                        Ok(_) => {},
+                                        Err(e) => println!("Error: {} while stream transfers data", e)
+                                    }
+                                }
+
+                                match read_response(&mut stream) {
+                                    ResponseType::Download(answer) => {
+                                        match answer {
+                                            true => println!("Download started!"),
+                                            false => println!("The file does not exist!")
+                                        }
+                                    },
+                                    ResponseType::Error(err) => println!("{}", err),
+                                    _ => println!("Something wrong! Try again later")
+                                }
+                            }
+                            else {
+                                println!("Error connection to a daemon!");
+                            }
                         }
                     }
                 }
@@ -195,7 +156,7 @@ fn main() {
 
                         match stream.write(to_daemon.as_bytes()) {
 
-                            Ok(_) => println!("Your [status] command has been sent!"),
+                            Ok(_) => {},
                             Err(e) => println!("Error: {} while stream transfers data!", e)
                         }
 
