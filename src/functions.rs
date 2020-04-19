@@ -25,7 +25,7 @@ pub type Container = HashMap<Filename, Vec<IpAddr>>;
         }
     }
 
-  pub fn pretty_print(containers: (&Container, &Container)) {
+   pub fn pretty_print(containers: (&Container, &Container)) {
         println!("Files to download:");
         pretty_print_container(containers.0);
         println!("------------------------------");

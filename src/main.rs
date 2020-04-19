@@ -48,6 +48,8 @@ fn main() {
                                 }
 
                                 match read_response(&mut stream) {
+
+                                    ResponseType::ShareScan => {},
                                     ResponseType::Error(err) => println!("{}", err),
                                     _ => println!("Something wrong! Try again later.")
                                 }
@@ -71,6 +73,8 @@ fn main() {
                             }
 
                             match read_response(&mut stream) {
+
+                                ResponseType::ShareScan => {},
                                 ResponseType::Error(err) => println!("{}", err),
                                 _ => println!("Something wrong! Try again later")
                             }
