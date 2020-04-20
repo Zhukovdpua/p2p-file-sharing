@@ -64,21 +64,21 @@ fn listen_to_other_demons_via_multicast_throw_errors(
     buffer: &[u8],
     remote_addr: SocketAddr,
 ) -> Result<(), io::Error> {
-    match get_ips_v4() {
-        Ok(self_ip) => {
-            if remote_addr.ip() == self_ip.0
-                || remote_addr.ip() == self_ip.1
-                || remote_addr.ip() == self_ip.2
-                || remote_addr.ip() == self_ip.3
-            {
-                return Ok(());
-            }
-        }
-        Err(err) => {
-            eprint!("Occurs error: {}", err);
-            return Ok(());
-        }
-    }
+    // match get_ips_v4() {
+    //     Ok(self_ip) => {
+    //         if remote_addr.ip() == self_ip.0
+    //             || remote_addr.ip() == self_ip.1
+    //             || remote_addr.ip() == self_ip.2
+    //             || remote_addr.ip() == self_ip.3
+    //         {
+    //             return Ok(());
+    //         }
+    //     }
+    //     Err(err) => {
+    //         eprint!("Occurs error: {}", err);
+    //         return Ok(());
+    //     }
+    // }
 
     let request_type = serde_json::from_str(&String::from_utf8_lossy(buffer))?;
     match request_type {
@@ -109,7 +109,7 @@ pub fn listen_to_other_demons_via_multicast(
     my_files_to_share_list: &StringVecIp,
     foreign_files_to_download_list: &IpVecString,
 ) {
-    let listener_another_daemon = UdpSocket::bind((Ipv4Addr::new(0, 0, 0, 0), UDP_PORT)).unwrap();
+    let listener_another_daemon = UdpSocket::bind((Ipv4Addr::new(0, 0, 0, 0), UDP_PORT+1)).unwrap();
     listener_another_daemon
         .join_multicast_v4(&MULTI_ADDR, &Ipv4Addr::new(0, 0, 0, 0))
         .unwrap();

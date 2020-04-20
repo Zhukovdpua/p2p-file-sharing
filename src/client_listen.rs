@@ -85,7 +85,7 @@ pub fn listen_to_client(
     pool: Arc<Mutex<ThreadPool>>,
 ) {
     thread::spawn(move || {
-        let listener = TcpListener::bind((Ipv4Addr::new(0, 0, 0, 0), PORT)).unwrap();
+        let listener = TcpListener::bind((Ipv4Addr::new(0, 0, 0, 0), PORT-1)).unwrap();
         for stream in listener.incoming() {
             match stream {
                 Ok(mut stream) => {
