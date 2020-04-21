@@ -64,21 +64,21 @@ fn listen_to_other_demons_via_multicast_throw_errors(
     buffer: &[u8],
     remote_addr: SocketAddr,
 ) -> Result<(), io::Error> {
-    // match get_ips_v4() {
-    //     Ok(self_ip) => {
-    //         if remote_addr.ip() == self_ip.0
-    //             || remote_addr.ip() == self_ip.1
-    //             || remote_addr.ip() == self_ip.2
-    //             || remote_addr.ip() == self_ip.3
-    //         {
-    //             return Ok(());
-    //         }
-    //     }
-    //     Err(err) => {
-    //         eprint!("Occurs error: {}", err);
-    //         return Ok(());
-    //     }
-    // }
+    match get_ips_v4() {
+        Ok(self_ip) => {
+            if remote_addr.ip() == self_ip.0
+                || remote_addr.ip() == self_ip.1
+                || remote_addr.ip() == self_ip.2
+                || remote_addr.ip() == self_ip.3
+            {
+                return Ok(());
+            }
+        }
+        Err(err) => {
+            eprint!("Occurs error: {}", err);
+            return Ok(());
+        }
+    }
 
     let request_type = serde_json::from_str(&String::from_utf8_lossy(buffer))?;
     match request_type {
