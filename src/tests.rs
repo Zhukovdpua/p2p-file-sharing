@@ -623,35 +623,35 @@ fn select_sharing_files_to_send_test() {
 
 // !!! Hardware specific !!!
 
-#[test]
-fn filter_peers_test() {
-    {
-        let remote_addr = IpAddr::V4(Ipv4Addr::new(231, 0, 0, 1));
-        let actual_peers = vec![remote_addr];
-        let actual_result = filter_peers(&actual_peers);
-        assert_eq!(actual_result.len(), 1);
-        assert_eq!(actual_result, vec![remote_addr]);
-    }
+// #[test]
+// fn filter_peers_test() {
+//     {
+//         let remote_addr = IpAddr::V4(Ipv4Addr::new(231, 0, 0, 1));
+//         let actual_peers = vec![remote_addr];
+//         let actual_result = filter_peers(&actual_peers);
+//         assert_eq!(actual_result.len(), 1);
+//         assert_eq!(actual_result, vec![remote_addr]);
+//     }
 
-    {
-        let remote_addr_1 = IpAddr::V4(Ipv4Addr::new(231, 0, 0, 1));
-        let remote_addr_2 = IpAddr::V4(Ipv4Addr::new(231, 0, 0, 2));
-        let actual_peers = vec![remote_addr_1, remote_addr_2];
-        let actual_result = filter_peers(&actual_peers);
-        assert_eq!(actual_result.len(), 2);
-    }
+//     {
+//         let remote_addr_1 = IpAddr::V4(Ipv4Addr::new(231, 0, 0, 1));
+//         let remote_addr_2 = IpAddr::V4(Ipv4Addr::new(231, 0, 0, 2));
+//         let actual_peers = vec![remote_addr_1, remote_addr_2];
+//         let actual_result = filter_peers(&actual_peers);
+//         assert_eq!(actual_result.len(), 2);
+//     }
 
-    {
-        let remote_addr_1 = IpAddr::V4(Ipv4Addr::new(231, 0, 0, 1));
-        let remote_addr_2 = IpAddr::V4(Ipv4Addr::new(231, 0, 0, 2));
-        let remote_addr_3 = IpAddr::V4(Ipv4Addr::new(231, 0, 0, 3));
-        let actual_peers = vec![remote_addr_1, remote_addr_2, remote_addr_3];
-        let actual_result = filter_peers(&actual_peers);
-        assert_eq!(actual_result.len(), 2);
-        assert_eq!(
-            (actual_result == vec![remote_addr_1, remote_addr_2]
-                || actual_result == vec![remote_addr_2, remote_addr_1]),
-            true
-        );
-    }
-}
+//     {
+//         let remote_addr_1 = IpAddr::V4(Ipv4Addr::new(231, 0, 0, 1));
+//         let remote_addr_2 = IpAddr::V4(Ipv4Addr::new(231, 0, 0, 2));
+//         let remote_addr_3 = IpAddr::V4(Ipv4Addr::new(231, 0, 0, 3));
+//         let actual_peers = vec![remote_addr_1, remote_addr_2, remote_addr_3];
+//         let actual_result = filter_peers(&actual_peers);
+//         assert_eq!(actual_result.len(), 2);
+//         assert_eq!(
+//             (actual_result == vec![remote_addr_1, remote_addr_2]
+//                 || actual_result == vec![remote_addr_2, remote_addr_1]),
+//             true
+//         );
+//     }
+// }
