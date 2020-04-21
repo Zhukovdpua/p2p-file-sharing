@@ -1,13 +1,13 @@
 #[macro_use]
 extern crate clap;
 mod functions;
-use p2p_file_sharing_enum_commands::{
-    CommandType, LsResponseType, ResponseType, StatusResponseType, PORT,
-};
+mod commands;
+
 use clap::{Arg, App};
-use std::net::{TcpStream, IpAddr, Ipv4Addr};
-use std::io::Write;
-use functions::{read_response, pretty_print};
+
+
+use commands::{share, scan, ls, download_with_path,
+               download_without_path, status};
 
 fn main() {
 
@@ -34,80 +34,24 @@ fn main() {
                 match arg1_val {
 
                     "share" => {
-
                         if let Some(arg2_val) = matches.value_of("ARG2") {
+                            share(arg2_val);
+                        }
+                        else{
 
-                            let command = CommandType::Share(arg2_val.to_string());
-                            let to_daemon = serde_json::to_string(&command).unwrap();
-                            if let Ok(mut stream) = TcpStream::connect((IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), PORT)) {
-
-                                match stream.write(to_daemon.as_bytes()) {
-
-                                    Ok(_) => {},
-                                    Err(e) => println!("Error: {} while stream transfers data", e)
-                                }
-
-                                match read_response(&mut stream) {
-
-                                    ResponseType::ShareScan => {},
-                                    ResponseType::Error(err) => println!("{}", err),
-                                    _ => println!("Something wrong! Try again later.")
-                                }
-                            }
-                            else {
-                                println!("Error connection to a daemon!");
-                            }
+                            println!("Error with filepath!");
                         }
                     }
 
                     "scan" => {
 
-                        let command = CommandType::Scan;
-                        let to_daemon = serde_json::to_string(&command).unwrap();
-                        if let Ok(mut stream) = TcpStream::connect((IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), PORT)) {
+                        scan();
 
-                            match stream.write(to_daemon.as_bytes()) {
-
-                                Ok(_) => {},
-                                Err(e) => println!("Error: {} while stream transfers data", e)
-                            }
-
-                            match read_response(&mut stream) {
-
-                                ResponseType::ShareScan => {},
-                                ResponseType::Error(err) => println!("{}", err),
-                                _ => println!("Something wrong! Try again later")
-                            }
-                        }
-                        else {
-                            println!("Error connection to a daemon!");
-                        }
                     }
 
                     "ls" => {
 
-                        let command = CommandType::Ls;
-                        let to_daemon = serde_json::to_string(&command).unwrap();
-                        if let Ok(mut stream) = TcpStream::connect((IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), PORT)) {
-
-                            match stream.write(to_daemon.as_bytes()) {
-                                Ok(_) => {},
-                                Err(e) => println!("Error: {} while stream transfers data", e)
-                            }
-
-                            match read_response(&mut stream) {
-                                ResponseType::Ls(str) => {
-                                    let container: LsResponseType = serde_json::from_str(&str).unwrap();
-                                    println!("{:?}", container);
-                                },
-                                ResponseType::Error(err) => println!("{}", err),
-                                _ => println!("Something wrong! Try again later")
-                            }
-                        }
-                        else {
-
-                            println!("Error connection to the daemon!");
-                        }
+                        ls();
                     }
 
                     "download" => {
@@ -115,76 +59,26 @@ fn main() {
                         if matches.is_present("ARG2"){
                             if let Some(arg2_val) = matches.value_of("ARG2"){
 
-                                if let Ok(mut stream) = TcpStream::connect((IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), PORT)) {
-
                                     if matches.is_present("FLG1") {
                                         if matches.is_present("ARG3") {
 
                                             if let Some(arg3_val) = matches.value_of("ARG3") {
-                                                let command = CommandType::Download(arg2_val.to_string(), arg3_val.to_string());
-                                                let to_daemon = serde_json::to_string(&command).unwrap();
 
-                                                match stream.write(to_daemon.as_bytes()) {
-
-                                                    Ok(_) => {},
-                                                    Err(e) => println!("Error: {} while stream transfers data", e)
-                                                }
+                                                download_with_path(arg2_val, arg3_val);
                                             }
                                         }
                                     }
                                     else {
 
-                                        let command = CommandType::Download(arg2_val.to_string(), String::new());
-                                        let to_daemon = serde_json::to_string(&command).unwrap();
-                                        match stream.write(to_daemon.as_bytes()) {
-
-                                            Ok(_) => {},
-                                            Err(e) => println!("Error: {} while stream transfers data", e)
-                                        }
+                                        download_without_path(arg2_val);
                                     }
-
-                                    match read_response(&mut stream) {
-                                        ResponseType::Download(answer) => {
-                                            match answer {
-                                                true => println!("Download started!"),
-                                                false => println!("The file does not exist!")
-                                            }
-                                        },
-                                        ResponseType::Error(err) => println!("{}", err),
-                                        _ => println!("Something wrong! Try again later")
-                                    }
-                                }
-                                else {
-                                    println!("Error connection to a daemon!");
-                                }
                             }
                         }
                     }
 
                     "status" => {
 
-                        let command = CommandType::Status;
-                        let to_daemon = serde_json::to_string(&command).unwrap();
-                        if let Ok(mut stream) = TcpStream::connect((IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), PORT)) {
-
-                            match stream.write(to_daemon.as_bytes()) {
-
-                                Ok(_) => {},
-                                Err(e) => println!("Error: {} while stream transfers data!", e)
-                            }
-
-                            match read_response(&mut stream) {
-                                ResponseType::Status(str) => {
-                                    let container: StatusResponseType = serde_json::from_str(&str).unwrap();
-                                    pretty_print((&container.0, &container.1));
-                                },
-                                ResponseType::Error(err) => println!("{}", err),
-                                _ => println!("Something wrong! Try again later")
-                            }
-                        }
-                        else {
-                            println!("Error connection to a daemon!");
-                        }
+                        status();
                     }
 
                     _ => println!("Wrong command name! Try -h for more info.")
