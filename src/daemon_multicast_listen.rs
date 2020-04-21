@@ -109,7 +109,7 @@ pub fn listen_to_other_demons_via_multicast(
     my_files_to_share_list: &StringVecIp,
     foreign_files_to_download_list: &IpVecString,
 ) {
-    let listener_another_daemon = UdpSocket::bind((Ipv4Addr::new(0, 0, 0, 0), UDP_PORT+1)).unwrap();
+    let listener_another_daemon = UdpSocket::bind((Ipv4Addr::new(0, 0, 0, 0), UDP_PORT)).unwrap();
     listener_another_daemon
         .join_multicast_v4(&MULTI_ADDR, &Ipv4Addr::new(0, 0, 0, 0))
         .unwrap();
